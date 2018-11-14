@@ -15,12 +15,26 @@ void *functioncontador1(void *i);
 void *functioncontador2(void *i);
 
 
+void llenarMatriz(void *i){
+	datos *v = (datos *)i;
+	int k, j;
+	for (k = 0; k < v->x; k++) {
+		for (j = 0; j < v->y; j++) {
+			v->mat[k][j] = 1 + rand() % 255;
+		}
+	}
+}
+
 void main()
 {
 	int i, j;
 	pthread_t thread1, thread2;
 	datos * d = (datos *)malloc(sizeof(datos));
-	
+
+	d->x = 10;
+	d->y = 20;
+	llenarMatriz((void*)d);
+
 	pthread_create(&thread1, NULL, &functioncontador1, (void *)d);
 	pthread_create(&thread2, NULL, &functioncontador2, (void *)d);
 
@@ -41,23 +55,14 @@ void main()
 	exit(EXIT_SUCCESS);
 }
 void *functioncontador1(void *i) {
-	printf("Estoy en el proceso 1...\n");
-	//printf("\nContador 1\n");
-	datos *v = (datos *)i;
-	v->x = 10;
-	v->y = 20;
-	printf("Terminé proceso 1...\n");
+	printf("Estoy en el thread 1...\n");
+	
+	printf("Terminé thread 1...\n");
 }
 void *functioncontador2(void *d) {
-	printf("Estoy en el proceso 2...\n");
-	//printf("\nContador 2\n");
-	datos *v = (datos *)d;
-	sleep(1);
-	int i, j;
-	for (i = 0; i < v->x; i++) {
-		for (j = 0; j < v->y; j++) {
-			v->mat[i][j] = i;
-		}
-	}
-	printf("Terminé el proceso 2...\n");
+	printf("Estoy en el thread 2...\n");
+	
+	printf("Terminé el thread 2...\n");
 }
+
+
