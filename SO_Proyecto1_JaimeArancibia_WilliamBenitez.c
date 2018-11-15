@@ -14,6 +14,18 @@ typedef struct {
 void *functioncontador1(void *i);
 void *functioncontador2(void *i);
 
+int sumaMatriz(void *d, int fila1, int columna1, int fila2, int columna2){
+	datos *v = (datos *)d;
+	int suma = 0;
+	int k, j;
+	for (k = fila1; k <= fila2; k++) {
+		for (j = columna1; j <= columna2; j++) {
+			suma+=v->mat[k][j];
+		}
+	}
+	return suma;
+}
+
 
 void llenarMatriz(void *i){
 	datos *v = (datos *)i;
@@ -29,11 +41,15 @@ void main()
 {
 	int i, j;
 	pthread_t thread1, thread2;
+	
 	datos * d = (datos *)malloc(sizeof(datos));
 
-	d->x = 10;
-	d->y = 20;
+	d->x = 6;
+	d->y = 6;
 	llenarMatriz((void*)d);
+
+	int suma = sumaMatriz((void*)d,0,3,2,4);
+	printf("La suma de la porción de matriz es %d\n",suma);
 
 	pthread_create(&thread1, NULL, &functioncontador1, (void *)d);
 	pthread_create(&thread2, NULL, &functioncontador2, (void *)d);
