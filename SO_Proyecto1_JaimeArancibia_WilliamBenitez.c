@@ -14,6 +14,7 @@ typedef struct
 	int mat[maxHeight][maxWidth];
 } datos;
 
+//Estructura que permite pasar la matriz ("global") junto con un dato entero (el índice desde el cual partir la suma)
 typedef struct
 {
 	datos *d;
@@ -33,7 +34,7 @@ int cantidadThreads = 2;
 
 void main()
 {
-	int i, j;
+	int i; //Variables para loop
 	pthread_t threads[cantidadThreads];
 
 	datos *d = (datos *)malloc(sizeof(datos)); //Creación datos
@@ -43,6 +44,9 @@ void main()
 	d->width = 50;
 
 	llenarMatriz(d);
+	printf("Height:%d\n", d->height);
+	printf("Width:%d\n", d->width);
+	printf("\n");
 
 	/*Thread*/
 
@@ -50,22 +54,20 @@ void main()
 	{
 		mensaje *m = (mensaje *)malloc(sizeof(mensaje));
 		m->d = d;
-		m->part = i;
+		m->part = i; //Asigna a la variable part en cuál hilo estamos (por orden de creación)
 		pthread_create(&threads[i], NULL, &functionThread, (void *)m);
 	}
 
 	for (i = 0; i < cantidadThreads; i++)
 	{
-		pthread_join(threads[i], NULL);
+		pthread_join(threads[i], NULL); //Espera a que terminen todos los hilos
 	}
-
-	printf("Dim height:%d\n", d->height);
-	printf("Dim width:%d\n", d->width);
-	printf("\n");
 
 	int promedio = suma / (d->height * d->width);
 	printf("El promedio es %d...\n", promedio);
+
 	/*Fin Thread*/
+
 	imprimirMatriz(d);
 
 	exit(EXIT_SUCCESS);
@@ -84,22 +86,22 @@ void imprimirMatriz(datos *d)
 	}
 }
 
-void *functionThread(void *i)
+void *functionThread(void *m)
 {
-	mensaje *v = (mensaje *)i;
-	int part = v->part; 
+	mensaje *v = (mensaje *)m;
+	int part = v->part;
 	printf("-Estoy en el thread %d...\n", part);
 	int suma_ = sumaMatriz(v->d, part * (v->d->height * v->d->width) / cantidadThreads, ((part + 1) * (v->d->height * v->d->width) / cantidadThreads) - 1);
 	printf("Mi suma es %d\n", suma_);
-	pthread_mutex_lock(&contador_mutex);
-	suma += suma_; //Agrega la suma partcial al total global
+	pthread_mutex_lock(&contador_mutex); //Bloquea el hilo para manejar datos (concurrencia)
+	suma += suma_;						 //Agrega la suma parcial al total global
 	pthread_mutex_unlock(&contador_mutex);
-	printf("Terminé thread %d\n", part);
+	printf("Terminé thread %d...\n", part);
 }
 
 void llenarMatriz(datos *v)
 {
-	//Rellena la matriz con número enteros entre 1 width maxValue
+	//Rellena la matriz con número enteros entre 1 y maxValue
 	int k, j;
 	for (k = 0; k < v->height; k++)
 	{
