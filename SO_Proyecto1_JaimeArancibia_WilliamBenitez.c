@@ -3,15 +3,15 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-#define dimx 100
-#define dimy 100
+#define maxHeight 1000
+#define maxWidth 1000
 #define maxValue 255 //Valor máximo que puede tomar un valor de la matriz
 
 //Definición de estructura
 typedef struct
 {
-	int x, y; //Dimesiones de la matriz
-	int mat[dimx][dimy];
+	int height, width; //Dimesiones de la matriz
+	int mat[maxHeight][maxWidth];
 } datos;
 
 typedef struct
@@ -21,7 +21,6 @@ typedef struct
 } mensaje;
 
 pthread_mutex_t contador_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condicion_var = PTHREAD_COND_INITIALIZER;
 
 //Definición de funciones
 void *functionThread(void *i);
@@ -40,8 +39,8 @@ void main()
 	datos *d = (datos *)malloc(sizeof(datos)); //Creación datos
 
 	//Dimensiones matriz TODO: Leer desde la consola
-	d->x = 50;
-	d->y = 50;
+	d->height = 50;
+	d->width = 50;
 
 	llenarMatriz(d);
 
@@ -60,13 +59,13 @@ void main()
 		pthread_join(threads[i], NULL);
 	}
 
-	printf("Dim x:%d\n", d->x);
-	printf("Dim y:%d\n", d->y);
+	printf("Dim height:%d\n", d->height);
+	printf("Dim width:%d\n", d->width);
 	printf("\n");
 
-	int promedio = suma / (d->x * d->y);
+	int promedio = suma / (d->height * d->width);
 	printf("El promedio es %d...\n", promedio);
-
+	/*Fin Thread*/
 	imprimirMatriz(d);
 
 	exit(EXIT_SUCCESS);
@@ -75,9 +74,9 @@ void main()
 void imprimirMatriz(datos *d)
 {
 	int i, j;
-	for (i = 0; i < d->x; i++)
+	for (i = 0; i < d->height; i++)
 	{
-		for (j = 0; j < d->y; j++)
+		for (j = 0; j < d->width; j++)
 		{
 			printf("%d ", d->mat[i][j]);
 		}
@@ -88,23 +87,23 @@ void imprimirMatriz(datos *d)
 void *functionThread(void *i)
 {
 	mensaje *v = (mensaje *)i;
-	int part = v->part; //TODO sacar del mutex, o no será realmente paralelización
+	int part = v->part; 
 	printf("-Estoy en el thread %d...\n", part);
-	int suma_ = sumaMatriz(v->d, part * (v->d->x * v->d->y) / cantidadThreads, ((part + 1) * (v->d->x * v->d->y) / cantidadThreads) - 1);
+	int suma_ = sumaMatriz(v->d, part * (v->d->height * v->d->width) / cantidadThreads, ((part + 1) * (v->d->height * v->d->width) / cantidadThreads) - 1);
 	printf("Mi suma es %d\n", suma_);
 	pthread_mutex_lock(&contador_mutex);
-	suma += suma_;
+	suma += suma_; //Agrega la suma partcial al total global
 	pthread_mutex_unlock(&contador_mutex);
 	printf("Terminé thread %d\n", part);
 }
 
 void llenarMatriz(datos *v)
 {
-	//Rellena la matriz con número enteros entre 1 y maxValue
+	//Rellena la matriz con número enteros entre 1 width maxValue
 	int k, j;
-	for (k = 0; k < v->x; k++)
+	for (k = 0; k < v->height; k++)
 	{
-		for (j = 0; j < v->y; j++)
+		for (j = 0; j < v->width; j++)
 		{
 			v->mat[k][j] = 1 + rand() % maxValue;
 		}
@@ -119,8 +118,8 @@ int sumaMatriz(datos *d, int min, int max)
 	//Recorre la matriz como si fuera un array unidimensional, desde un índice mínimo a uno máximo.
 	for (k = min; k <= max; k++)
 	{
-		int fila = k / d->y;
-		int col = k - (fila * d->y);
+		int fila = k / d->width;
+		int col = k - (fila * d->width);
 		suma += d->mat[fila][col];
 	}
 	return suma;
