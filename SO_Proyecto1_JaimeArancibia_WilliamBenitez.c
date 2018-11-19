@@ -99,15 +99,15 @@ void *functionThread(void *m)
 	printf("Terminé thread %d...\n", part);
 }
 
-void llenarMatriz(datos *v)
+void llenarMatriz(datos *d)
 {
 	//Rellena la matriz con número enteros entre 1 y maxValue
-	int k, j;
-	for (k = 0; k < v->height; k++)
+	int i, j;
+	for (i = 0; i < d->height; i++)
 	{
-		for (j = 0; j < v->width; j++)
+		for (j = 0; j < d->width; j++)
 		{
-			v->mat[k][j] = 1 + rand() % maxValue;
+			d->mat[i][j] = 1 + rand() % maxValue;
 		}
 	}
 }
@@ -116,12 +116,12 @@ int sumaMatriz(datos *d, int min, int max)
 {
 
 	int suma = 0;
-	int k, j;
+	int i, j;
 	//Recorre la matriz como si fuera un array unidimensional, desde un índice mínimo a uno máximo.
-	for (k = min; k <= max; k++)
+	for (i = min; i <= max; i++)
 	{
-		int fila = k / d->width;
-		int col = k - (fila * d->width);
+		int fila = i / d->width;
+		int col = i - (fila * d->width);
 		suma += d->mat[fila][col];
 	}
 	return suma;
