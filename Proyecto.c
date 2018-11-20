@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/mman.h>
 
 #define maxHeight 1000
 #define maxWidth 1000
@@ -20,16 +21,17 @@ void llenarMatriz(datos *v);
 int sumaMatriz(datos *d, int min, int max);
 void clasificar(float avg);
 
-int sum = 0;
-
 int main(){
 	
 	srand(time(NULL));
 
-	int i, j; //sum = 0;
+	int i, j;
     long T1;
     long T2;
     float delta, avg = 0;
+    
+    int *sum = (int *)mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	*sum = 0;
     
     datos *d = (datos *)malloc(sizeof(datos));
 
@@ -71,38 +73,34 @@ int main(){
     if(worker_1 == 0) {
         
 		int sumaParcial = sumaMatriz(d, 0, ((d->height*d->width)/4)-1);
-		sum += sumaParcial;
-		printf("\nsumxd1: %d\n", sumaParcial);
+		*sum += sumaParcial;
+		printf("\nsum1: %d\n", sumaParcial);
         exit(0);
     }
 
     if(worker_2 == 0) {
         
 		int sumaParcial = sumaMatriz(d, (d->height*d->width)/4, ((d->height*d->width)/2)-1);
-		sum += sumaParcial;
-		printf("\nsumxd2: %d\n", sumaParcial);
+		*sum += sumaParcial;
+		printf("\nsum2: %d\n", sumaParcial);
         exit(0);
     }
 
     if(worker_3 == 0) {
         
         int sumaParcial = sumaMatriz(d, (d->height*d->width)/2, (((d->height*d->width)/4)*3)-1);
-        sum += sumaParcial;
-		printf("\nsumxd3: %d\n", sumaParcial);
+        *sum += sumaParcial;
+		printf("\nsum3: %d\n", sumaParcial);
         exit(0);
     }
 
     if(worker_4 == 0) {
         
         int sumaParcial = sumaMatriz(d, ((d->height*d->width)/4)*3, (d->height*d->width)-1);
-        sum += sumaParcial;
-		printf("\nsumxd4: %d\n", sumaParcial);
+        *sum += sumaParcial;
+		printf("\nsum4: %d\n", sumaParcial);
         exit(0);
     }
-    
-    avg = sum/(d->height*d->width);
-	printf("\nsumxd: %d\n", sum);
-	printf("\navgxd: %f\n", avg);
     
     waitpid(worker_1, NULL, 0);
     waitpid(worker_2, NULL, 0);
@@ -114,9 +112,9 @@ int main(){
 
 	printf("\nTime: %.5f segundos\n", delta);
 	
-	avg = sum/(d->height*d->width);
-	printf("\nsum: %d\n", sum);
-    printf("\navg: %f\n", avg);
+	avg = *sum/(d->height*d->width);
+	printf("\nsum: %d\n", *sum);
+    printf("\navg: %.2f\n", avg);
 
 	clasificar(avg);
 
