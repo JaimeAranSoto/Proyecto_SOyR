@@ -116,6 +116,7 @@ void main()
 	{
 		worker_3 = pid;
 		pid = fork();
+		
 	}
 	if (pid)
 		worker_4 = pid;
