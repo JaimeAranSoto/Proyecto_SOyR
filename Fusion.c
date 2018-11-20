@@ -3,7 +3,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 #include <sys/mman.h>
 #include <pthread.h>
 
@@ -37,13 +37,14 @@ void classify(float avg);
 int threadsAmount = 4;
 int *sum;
 
+double time_diff(struct timeval x, struct timeval y);
 void main()
 {
-	int i;		         //Variables para loop
-	long T1, T2, T3, T4; //Variables para cálculo de tiempo
+	int i; //Variables para loop
+	//long T1, T2, T3, T4; //Variables para cálculo de tiempo
 	float delta = 0, avg;
 	srand(time(NULL));
-
+	struct timeval before, after;
 	pthread_t threads[threadsAmount];
 
 	matrixData *d = (matrixData *)malloc(sizeof(matrixData)); //Creación datos
@@ -64,7 +65,8 @@ void main()
 	printMatrix(d);
 
 	/*Thread*/
-	T1 = clock();
+	//T1 = clock();
+	gettimeofday(&before, NULL);
 	for (i = 0; i < threadsAmount; i++)
 	{
 		message *m = (message *)malloc(sizeof(message));
@@ -79,83 +81,94 @@ void main()
 	}
 
 	avg = (float)*sum / (d->height * d->width);
-	
-	T2 = clock();
-	
-	delta = (float)(T2 - T1) / CLOCKS_PER_SEC;
-	printf("\nTiempo Threads: %.5f segundos\n", delta);
-	/*Fin Thread*/
-	
-	*sum = 0;
-	
-	//Inicio Proceso Paralelo
-    pid_t worker_1;
-    pid_t worker_2;
-    pid_t worker_3;
-    pid_t worker_4;
-    
-    T3 = clock();
 
-    pid_t pid = fork();
-	if (pid) {
+	//T2 = clock();
+
+	//delta = (float)(T2 - T1) / CLOCKS_PER_SEC;
+	//printf("\nTiempo Threads: %.5f segundos\n", delta);
+	gettimeofday(&after, NULL);
+	printf("Tiempo de ejecución THREADS: %f\n", time_diff(before, after));
+	/*Fin Thread*/
+
+	*sum = 0;
+
+	//Inicio Proceso Paralelo
+
+	pid_t worker_1;
+	pid_t worker_2;
+	pid_t worker_3;
+	pid_t worker_4;
+	gettimeofday(&before, NULL);
+	//  T3 = clock();
+
+	pid_t pid = fork();
+	if (pid)
+	{
 		worker_1 = pid;
 		pid = fork();
 	}
-	if (pid) {
+	if (pid)
+	{
 		worker_2 = pid;
 		pid = fork();
 	}
-	if (pid) {
+	if (pid)
+	{
 		worker_3 = pid;
 		pid = fork();
 	}
 	if (pid)
 		worker_4 = pid;
 
-    if(worker_1 == 0) {
-        
-		int partialSum = sumMatrix(d, 0, ((d->height*d->width)/4)-1);
+	if (worker_1 == 0)
+	{
+
+		int partialSum = sumMatrix(d, 0, ((d->height * d->width) / 4) - 1);
 		*sum += partialSum;
-        exit(0);
-    }
+		exit(0);
+	}
 
-    if(worker_2 == 0) {
-        
-		int partialSum = sumMatrix(d, (d->height*d->width)/4, ((d->height*d->width)/2)-1);
+	if (worker_2 == 0)
+	{
+
+		int partialSum = sumMatrix(d, (d->height * d->width) / 4, ((d->height * d->width) / 2) - 1);
 		*sum += partialSum;
-        exit(0);
-    }
+		exit(0);
+	}
 
-    if(worker_3 == 0) {
-        
-        int partialSum = sumMatrix(d, (d->height*d->width)/2, (((d->height*d->width)/4)*3)-1);
-        *sum += partialSum;
-        exit(0);
-    }
+	if (worker_3 == 0)
+	{
 
-    if(worker_4 == 0) {
-        
-        int partialSum = sumMatrix(d, ((d->height*d->width)/4)*3, (d->height*d->width)-1);
-        *sum += partialSum;
-        exit(0);
-    }
-    
-    waitpid(worker_1, NULL, 0);
-    waitpid(worker_2, NULL, 0);
-    waitpid(worker_3, NULL, 0);
-    waitpid(worker_4, NULL, 0);
-    
-    avg = (float)*sum/(d->height*d->width);
-    
-    T4 = clock();
-    //Fin Proceso Paralelo
+		int partialSum = sumMatrix(d, (d->height * d->width) / 2, (((d->height * d->width) / 4) * 3) - 1);
+		*sum += partialSum;
+		exit(0);
+	}
 
-	delta = (float)(T4-T3)/CLOCKS_PER_SEC;
-	printf("\nTiempo Proceso Paralelo: %.5f segundos\n", delta);
-	 
+	if (worker_4 == 0)
+	{
+
+		int partialSum = sumMatrix(d, ((d->height * d->width) / 4) * 3, (d->height * d->width) - 1);
+		*sum += partialSum;
+		exit(0);
+	}
+
+	waitpid(worker_1, NULL, 0);
+	waitpid(worker_2, NULL, 0);
+	waitpid(worker_3, NULL, 0);
+	waitpid(worker_4, NULL, 0);
+
+	avg = (float)*sum / (d->height * d->width);
+
+	// T4 = clock();
+	//Fin Proceso Paralelo
+	gettimeofday(&after, NULL);
+	printf("Tiempo de ejecución PROCESOS: %f\n", time_diff(before, after));
+	/*delta = (float)(T4-T3)/CLOCKS_PER_SEC;
+	printf("\nTiempo Proceso Paralelo: %.5f segundos\n", delta);*/
+
 	printf("\nEl promedio es: %.5f\n", avg);
 	classify(avg);
-	
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -178,11 +191,10 @@ void *functionThread(void *m)
 	int part = v->part;
 	int partialSum = sumMatrix(v->d, part * (v->d->height * v->d->width) / threadsAmount, ((part + 1) * (v->d->height * v->d->width) / threadsAmount) - 1);
 	free(v);
-	v=NULL;
+	v = NULL;
 	pthread_mutex_lock(&mutex_counter); //Bloquea el hilo para manejar datos (concurrencia)
-	*sum += partialSum;						 //Agrega la suma parcial al total global
+	*sum += partialSum;					//Agrega la suma parcial al total global
 	pthread_mutex_unlock(&mutex_counter);
-	
 }
 
 void populateMatrix(matrixData *d)
@@ -218,4 +230,14 @@ void classify(float avg)
 		printf("\nMatriz Oscura\n");
 	else
 		printf("\nMatriz Clara\n");
+}
+
+double time_diff(struct timeval x, struct timeval y)
+{
+	double x_ms, y_ms, diff;
+	x_ms = (double)x.tv_sec * 1000000 + (double)x.tv_usec;
+	y_ms = (double)y.tv_sec * 1000000 + (double)y.tv_usec;
+
+	diff = (double)y_ms - (double)x_ms;
+	return diff;
 }
