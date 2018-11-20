@@ -177,9 +177,12 @@ void *functionThread(void *m)
 	message *v = (message *)m;
 	int part = v->part;
 	int partialSum = sumMatrix(v->d, part * (v->d->height * v->d->width) / threadsAmount, ((part + 1) * (v->d->height * v->d->width) / threadsAmount) - 1);
+	free(v);
+	v=NULL;
 	pthread_mutex_lock(&mutex_counter); //Bloquea el hilo para manejar datos (concurrencia)
 	*sum += partialSum;						 //Agrega la suma parcial al total global
 	pthread_mutex_unlock(&mutex_counter);
+	
 }
 
 void populateMatrix(matrixData *d)
