@@ -16,38 +16,39 @@ typedef struct
 {
 	int height, width; //Dimesiones de la matriz
 	int mat[maxHeight][maxWidth];
-} datos;
+} matrixData;
 
 //Estructura que permite pasar la matriz ("global") junto con un dato entero (el índice desde el cual partir la suma)
 typedef struct
 {
-	datos *d;
+	matrixData *d;
 	int part;
-} mensaje;
+} message;
 
-pthread_mutex_t contador_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_counter = PTHREAD_MUTEX_INITIALIZER;
 
 //Definición de funciones
 void *functionThread(void *i);
-void imprimirMatriz(datos *d);
-void llenarMatriz(datos *v);
-int sumaMatriz(datos *d, int min, int max);
-void clasificar(float avg);
+void printMatrix(matrixData *d);
+void populateMatrix(matrixData *v);
+int sumMatrix(matrixData *d, int min, int max);
+void classify(float avg);
 
-int cantidadThreads = 2;
-int *suma;
+int threadsAmount = 4;
+int *sum;
+
 void main()
 {
-	int i;		 //Variables para loop
-	long T1, T2; //Variables para cálculo de tiempo
-	float delta = 0;
+	int i;		         //Variables para loop
+	long T1, T2, T3, T4; //Variables para cálculo de tiempo
+	float delta = 0, avg;
+	srand(time(NULL));
 
-	pthread_t threads[cantidadThreads];
+	pthread_t threads[threadsAmount];
 
-	datos *d = (datos *)malloc(sizeof(datos)); //Creación datos
-	suma = (int *)malloc(sizeof(int));
-	*suma = 0;
-	printf("El valor de la suma es: %d\n", *suma);
+	matrixData *d = (matrixData *)malloc(sizeof(matrixData)); //Creación datos
+	sum = (int *)mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	*sum = 0;
 
 	//Dimensiones matriz
 	printf("matrix_rows: ");
@@ -56,41 +57,109 @@ void main()
 	scanf("%d", &d->width);
 	printf("\n");
 
-	llenarMatriz(d);
-	printf("Height:%d\n", d->height);
-	printf("Width:%d\n", d->width);
+	populateMatrix(d);
+	printf("Height: %d\n", d->height);
+	printf("Width: %d\n", d->width);
 	printf("\n");
+	printMatrix(d);
 
 	/*Thread*/
 	T1 = clock();
-	for (i = 0; i < cantidadThreads; i++)
+	for (i = 0; i < threadsAmount; i++)
 	{
-		mensaje *m = (mensaje *)malloc(sizeof(mensaje));
+		message *m = (message *)malloc(sizeof(message));
 		m->d = d;
 		m->part = i; //Asigna a la variable part en cuál hilo estamos (por orden de creación)
 		pthread_create(&threads[i], NULL, &functionThread, (void *)m);
 	}
 
-	for (i = 0; i < cantidadThreads; i++)
+	for (i = 0; i < threadsAmount; i++)
 	{
 		pthread_join(threads[i], NULL); //Espera a que terminen todos los hilos
 	}
 
-	float promedio = (float)*suma / (d->height * d->width);
-	printf("El promedio es %f...\n", promedio);
-	clasificar(promedio);
+	avg = (float)*sum / (d->height * d->width);
+	
 	T2 = clock();
+	
 	delta = (float)(T2 - T1) / CLOCKS_PER_SEC;
-
-	printf("\nTime: %.5f segundos\n", delta);
+	printf("\nTiempo Threads: %.5f segundos\n", delta);
 	/*Fin Thread*/
+	
+	*sum = 0;
+	
+	//Inicio Proceso Paralelo
+    pid_t worker_1;
+    pid_t worker_2;
+    pid_t worker_3;
+    pid_t worker_4;
+    
+    T3 = clock();
 
-	imprimirMatriz(d);
+    pid_t pid = fork();
+	if (pid) {
+		worker_1 = pid;
+		pid = fork();
+	}
+	if (pid) {
+		worker_2 = pid;
+		pid = fork();
+	}
+	if (pid) {
+		worker_3 = pid;
+		pid = fork();
+	}
+	if (pid)
+		worker_4 = pid;
 
+    if(worker_1 == 0) {
+        
+		int partialSum = sumMatrix(d, 0, ((d->height*d->width)/4)-1);
+		*sum += partialSum;
+        exit(0);
+    }
+
+    if(worker_2 == 0) {
+        
+		int partialSum = sumMatrix(d, (d->height*d->width)/4, ((d->height*d->width)/2)-1);
+		*sum += partialSum;
+        exit(0);
+    }
+
+    if(worker_3 == 0) {
+        
+        int partialSum = sumMatrix(d, (d->height*d->width)/2, (((d->height*d->width)/4)*3)-1);
+        *sum += partialSum;
+        exit(0);
+    }
+
+    if(worker_4 == 0) {
+        
+        int partialSum = sumMatrix(d, ((d->height*d->width)/4)*3, (d->height*d->width)-1);
+        *sum += partialSum;
+        exit(0);
+    }
+    
+    waitpid(worker_1, NULL, 0);
+    waitpid(worker_2, NULL, 0);
+    waitpid(worker_3, NULL, 0);
+    waitpid(worker_4, NULL, 0);
+    
+    avg = (float)*sum/(d->height*d->width);
+    
+    T4 = clock();
+    //Fin Proceso Paralelo
+
+	delta = (float)(T4-T3)/CLOCKS_PER_SEC;
+	printf("\nTiempo Proceso Paralelo: %.5f segundos\n", delta);
+	 
+	printf("\nEl promedio es: %.5f\n", avg);
+	classify(avg);
+	
 	exit(EXIT_SUCCESS);
 }
 
-void imprimirMatriz(datos *d)
+void printMatrix(matrixData *d)
 {
 	int i, j;
 	for (i = 0; i < d->height; i++)
@@ -105,18 +174,15 @@ void imprimirMatriz(datos *d)
 
 void *functionThread(void *m)
 {
-	mensaje *v = (mensaje *)m;
+	message *v = (message *)m;
 	int part = v->part;
-	printf("-Estoy en el thread %d...\n", part);
-	int suma_ = sumaMatriz(v->d, part * (v->d->height * v->d->width) / cantidadThreads, ((part + 1) * (v->d->height * v->d->width) / cantidadThreads) - 1);
-	printf("Mi suma es %d\n", suma_);
-	pthread_mutex_lock(&contador_mutex); //Bloquea el hilo para manejar datos (concurrencia)
-	*suma += suma_;						 //Agrega la suma parcial al total global
-	pthread_mutex_unlock(&contador_mutex);
-	printf("Terminé thread %d...\n", part);
+	int partialSum = sumMatrix(v->d, part * (v->d->height * v->d->width) / threadsAmount, ((part + 1) * (v->d->height * v->d->width) / threadsAmount) - 1);
+	pthread_mutex_lock(&mutex_counter); //Bloquea el hilo para manejar datos (concurrencia)
+	*sum += partialSum;						 //Agrega la suma parcial al total global
+	pthread_mutex_unlock(&mutex_counter);
 }
 
-void llenarMatriz(datos *d)
+void populateMatrix(matrixData *d)
 {
 	//Rellena la matriz con número enteros entre 1 y maxValue
 	int i, j;
@@ -129,24 +195,22 @@ void llenarMatriz(datos *d)
 	}
 }
 
-int sumaMatriz(datos *d, int min, int max)
+int sumMatrix(matrixData *d, int min, int max)
 {
-
-	int suma = 0;
+	int sum = 0;
 	int i, j;
 	//Recorre la matriz como si fuera un array unidimensional, desde un índice mínimo a uno máximo.
 	for (i = min; i <= max; i++)
 	{
-		int fila = i / d->width;
-		int col = i - (fila * d->width);
-		suma += d->mat[fila][col];
+		int row = i / d->width;
+		int col = i - (row * d->width);
+		sum += d->mat[row][col];
 	}
-	return suma;
+	return sum;
 }
 
-void clasificar(float avg)
+void classify(float avg)
 {
-
 	if (avg <= 127)
 		printf("\nMatriz Oscura\n");
 	else
