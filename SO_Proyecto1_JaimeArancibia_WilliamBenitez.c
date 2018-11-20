@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define maxHeight 1000
 #define maxWidth 1000
@@ -33,11 +33,13 @@ void clasificar(float avg);
 
 int cantidadThreads = 2;
 int *suma;
+
+double time_diff(struct timeval x, struct timeval y);
 void main()
 {
-	int i;		 //Variables para loop
-	long T1, T2; //Variables para cálculo de tiempo
-	float delta = 0;
+	int i; //Variables para loop
+	struct timeval before, after;
+	
 
 	pthread_t threads[cantidadThreads];
 
@@ -59,7 +61,7 @@ void main()
 	printf("\n");
 
 	/*Thread*/
-	T1 = clock();
+	gettimeofday(&before,NULL);
 	for (i = 0; i < cantidadThreads; i++)
 	{
 		mensaje *m = (mensaje *)malloc(sizeof(mensaje));
@@ -76,14 +78,10 @@ void main()
 	float promedio = (float)*suma / (d->height * d->width);
 	printf("El promedio es %f...\n", promedio);
 	clasificar(promedio);
-	T2 = clock();
-	delta = (float)(T2 - T1) / CLOCKS_PER_SEC;
-
-	printf("\nTime: %.5f segundos\n", delta);
+	gettimeofday(&after,NULL);
+	printf("Tiempo de ejecución: %.01f\n",time_diff(before,after));
 	/*Fin Thread*/
-
 	imprimirMatriz(d);
-
 	exit(EXIT_SUCCESS);
 }
 
@@ -148,4 +146,13 @@ void clasificar(float avg)
 		printf("\nMatriz Oscura\n");
 	else
 		printf("\nMatriz Clara\n");
+}
+
+double time_diff(struct timeval x, struct timeval y){
+	double x_ms, y_ms, diff;
+	x_ms = (double)x.tv_sec*1000000+(double)x.tv_usec;
+	y_ms = (double)y.tv_sec*1000000+(double)y.tv_usec;
+
+	diff = (double)y_ms - (double)x_ms;
+	return diff;
 }
